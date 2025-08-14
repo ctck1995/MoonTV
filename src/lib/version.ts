@@ -22,25 +22,26 @@ const VERSION_CHECK_URLS = [
  * @returns Promise<UpdateStatus> - 返回版本检查状态
  */
 export async function checkForUpdates(): Promise<UpdateStatus> {
-  try {
-    // 尝试从主要URL获取版本信息
-    const primaryVersion = await fetchVersionFromUrl(VERSION_CHECK_URLS[0]);
-    if (primaryVersion) {
-      return compareVersions(primaryVersion);
-    }
+  // try {
+  //   // 尝试从主要URL获取版本信息
+  //   const primaryVersion = await fetchVersionFromUrl(VERSION_CHECK_URLS[0]);
+  //   if (primaryVersion) {
+  //     return compareVersions(primaryVersion);
+  //   }
 
-    // 如果主要URL失败，尝试备用URL
-    const backupVersion = await fetchVersionFromUrl(VERSION_CHECK_URLS[1]);
-    if (backupVersion) {
-      return compareVersions(backupVersion);
-    }
+  //   // 如果主要URL失败，尝试备用URL
+  //   const backupVersion = await fetchVersionFromUrl(VERSION_CHECK_URLS[1]);
+  //   if (backupVersion) {
+  //     return compareVersions(backupVersion);
+  //   }
 
-    // 如果两个URL都失败，返回获取失败状态
-    return UpdateStatus.FETCH_FAILED;
-  } catch (error) {
-    console.error('版本检查失败:', error);
-    return UpdateStatus.FETCH_FAILED;
-  }
+  //   // 如果两个URL都失败，返回获取失败状态
+  //   return UpdateStatus.FETCH_FAILED;
+  // } catch (error) {
+  //   console.error('版本检查失败:', error);
+  //   return UpdateStatus.FETCH_FAILED;
+  // }
+  return UpdateStatus.NO_UPDATE;
 }
 
 /**
