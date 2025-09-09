@@ -10,10 +10,40 @@ import { IStorage } from '@/lib/types';
 export const runtime = 'edge';
 
 // 支持的操作类型
-type Action = 'add' | 'disable' | 'enable' | 'delete' | 'sort';
+type Action = 'add' | 'disable' | 'enable' | 'delete' | 'sort' | 'sync';
 
 interface BaseBody {
   action?: Action;
+}
+
+function decodeBase58(base58Str: string): string {
+    const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+    for (const char of base58Str) {
+        if (!BASE58_ALPHABET.includes(char)) {
+            throw new Error(`无效的Base58字符: ${char}`);
+        }
+    }
+    let leadingZeros = 0;
+    while (leadingZeros < base58Str.length && base58Str[leadingZeros] === '1') {
+        leadingZeros++;
+    }
+    let value = 0n;
+    for (const char of base58Str) {
+        const charIndex = BigInt(BASE58_ALPHABET.indexOf(char));
+        value = value * 58n + charIndex;
+    }
+    if (value === 0n) {
+        return '\x00'.repeat(leadingZeros);
+    }
+    const bytes: number[] = [];
+    while (value > 0n) {
+        bytes.push(Number(value % 256n));
+        value = value / 256n;
+    }
+    bytes.reverse();
+    const leadingZeroBytes = new Array(leadingZeros).fill(0);
+    const fullBytes = [...leadingZeroBytes, ...bytes];
+    return Buffer.from(fullBytes).toString('utf8');
 }
 
 export async function POST(request: NextRequest) {
@@ -138,6 +168,47 @@ export async function POST(request: NextRequest) {
         });
         adminConfig.SourceConfig = newList;
         break;
+      }
+      case 'sync': {
+        const { str } = body as { str?: string };
+        if (!str)
+          return NextResponse.json({ error: '缺少 str 参数' }, { status: 400 });
+        const decodedStr = decodeBase58(str);
+        interface SyncData {
+          cache_time: number;
+          api_site: Record<
+            string,
+            {
+              api: string;
+              name: string;
+              detail?: string;
+            }
+          >;
+        }
+        const syncData: SyncData = JSON.parse(decodedStr);
+        const customSources = adminConfig.SourceConfig.filter(
+          (source) => source.from === 'custom'
+        );
+        adminConfig.SourceConfig = [];
+        Object.entries(syncData.api_site).forEach(([key, siteInfo]) => {
+          adminConfig.SourceConfig.push({
+            key: key,
+            name: siteInfo.name,
+            api: siteInfo.api,
+            detail: siteInfo.detail || '',
+            from: 'config',
+            disabled: false,
+          });
+        });
+        const existingKeys = new Set(
+          adminConfig.SourceConfig.map((source) => source.key)
+        );
+        customSources.forEach((customSource) => {
+          if (!existingKeys.has(customSource.key)) {
+            adminConfig.SourceConfig.push(customSource);
+            existingKeys.add(customSource.key);
+          }
+        });
       }
       default:
         return NextResponse.json({ error: '未知操作' }, { status: 400 });
