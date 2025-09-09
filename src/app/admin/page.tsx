@@ -642,6 +642,7 @@ const VideoSourceConfig = ({
     disabled: false,
     from: 'config',
   });
+  const [syncStr, setSyncStr] = useState('');
 
   // dnd-kit 传感器
   const sensors = useSensors(
@@ -686,6 +687,24 @@ const VideoSourceConfig = ({
     } catch (err) {
       showError(err instanceof Error ? err.message : '操作失败');
       throw err; // 向上抛出方便调用处判断
+    }
+  };
+
+  const handleSyncSources = () => {
+    if (!syncStr.trim()) {
+      showError('请输入同步内容');
+      return;
+    }
+    try {
+      await callSourceApi({
+        action: 'sync',
+        str: syncStr.trim()
+      });
+      showSuccess('视频源同步成功');
+      // 成功后清空输入框
+      setSyncStr(''); 
+    } catch (err) {
+      console.error('视频源同步失败', err);
     }
   };
 
@@ -846,6 +865,27 @@ const VideoSourceConfig = ({
           className='px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors'
         >
           {showAddForm ? '取消' : '添加视频源'}
+        </button>
+      </div>
+
+      <div className='space-y-2'>
+        <label 
+          className='block text-sm font-medium text-gray-700 dark:text-gray-300'
+        >
+          视频源同步
+        </label>
+        <textarea
+          value={syncStr}
+          onChange={(e) => setSyncStr(e.target.value)}
+          placeholder='请输入同步内容...'
+          rows={5}
+          className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-transparent'
+        />
+        <button
+          onClick={handleSyncSources}
+          className='px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors'
+        >
+          同步视频源
         </button>
       </div>
 
