@@ -696,7 +696,7 @@ const VideoSourceConfig = ({
       return;
     }
     try {
-      await callSourceApi({
+      callSourceApi({
         action: 'sync',
         str: syncStr.trim()
       });
