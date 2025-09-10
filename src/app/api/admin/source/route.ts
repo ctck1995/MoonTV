@@ -27,18 +27,18 @@ function decodeBase58(base58Str: string): string {
     while (leadingZeros < base58Str.length && base58Str[leadingZeros] === '1') {
         leadingZeros++;
     }
-    let value = 0n;
+    let value = BigInt(0);
     for (const char of base58Str) {
         const charIndex = BigInt(BASE58_ALPHABET.indexOf(char));
-        value = value * 58n + charIndex;
+        value = value * BigInt(58) + charIndex;
     }
-    if (value === 0n) {
+    if (value === BigInt(0)) {
         return '\x00'.repeat(leadingZeros);
     }
-    const bytes: number[] = [];
-    while (value > 0n) {
-        bytes.push(Number(value % 256n));
-        value = value / 256n;
+    const bytes = [];
+    while (value > BigInt(0)) {
+        bytes.push(Number(value % BigInt(256)));
+        value = value / BigInt(256);
     }
     bytes.reverse();
     const leadingZeroBytes = new Array(leadingZeros).fill(0);
@@ -209,7 +209,7 @@ export async function POST(request: NextRequest) {
             existingKeys.add(customSource.key);
           }
         });
-         break;
+        break;
       }
       default:
         return NextResponse.json({ error: '未知操作' }, { status: 400 });
