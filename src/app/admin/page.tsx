@@ -855,6 +855,34 @@ const VideoSourceConfig = ({
 
   return (
     <div className='space-y-6'>
+
+      <div className='space-y-2'>
+        <div className='flex items-center justify-between'>
+          <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+            视频源同步
+          </h4>
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className='px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors'
+          >
+            {showAddForm ? '取消' : '添加视频源'}
+          </button>
+          <button
+            onClick={handleSyncSources}
+            className='px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors'
+          >
+            同步
+          </button>
+        </div>
+        <textarea
+          value={syncStr}
+          onChange={(e) => setSyncStr(e.target.value)}
+          placeholder='请输入同步内容...'
+          rows={5}
+          className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-transparent'
+        />
+      </div>
+
       {/* 添加视频源表单 */}
       <div className='flex items-center justify-between'>
         <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
@@ -865,27 +893,6 @@ const VideoSourceConfig = ({
           className='px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors'
         >
           {showAddForm ? '取消' : '添加视频源'}
-        </button>
-      </div>
-
-      <div className='space-y-2'>
-        <label 
-          className='block text-sm font-medium text-gray-700 dark:text-gray-300'
-        >
-          视频源同步
-        </label>
-        <textarea
-          value={syncStr}
-          onChange={(e) => setSyncStr(e.target.value)}
-          placeholder='请输入同步内容...'
-          rows={5}
-          className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-transparent'
-        />
-        <button
-          onClick={handleSyncSources}
-          className='px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors'
-        >
-          同步视频源
         </button>
       </div>
 
