@@ -377,11 +377,11 @@ function HomeClient() {
                               from='douban'
                               title={anime.name_cn || anime.name}
                               poster={
-                                anime.images.large ||
-                                anime.images.common ||
-                                anime.images.medium ||
-                                anime.images.small ||
-                                anime.images.grid
+                                anime.images?.large ||
+                                anime.images?.common ||
+                                anime.images?.medium ||
+                                anime.images?.small ||
+                                anime.images?.grid
                               }
                               douban_id={anime.id}
                               rate={anime.rating?.score?.toString() || ''}
