@@ -381,7 +381,7 @@ function HomeClient() {
                                 anime.images?.common ||
                                 anime.images?.medium ||
                                 anime.images?.small ||
-                                anime.images?.grid
+                                anime.images?.grid || ''
                               }
                               douban_id={anime.id}
                               rate={anime.rating?.score?.toString() || ''}
