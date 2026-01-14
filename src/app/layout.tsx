@@ -24,8 +24,10 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 
   return {
-    title: siteName,
-    description: '影视聚合',
+    // title: siteName,
+    // description: '影视聚合',
+    title: 'Welcome',
+    description: 'Welcome',
     manifest: '/manifest.json',
   };
 }
