@@ -49,6 +49,7 @@ async function generateAuthCookie(
   includePassword = false
 ): Promise<string> {
   const authData: any = { role: role || 'user' };
+  authData.timestamp = Date.now();
 
   // 只在需要时包含 password
   if (includePassword && password) {
@@ -60,7 +61,6 @@ async function generateAuthCookie(
     // 使用密码作为密钥对用户名进行签名
     const signature = await generateSignature(username, process.env.PASSWORD);
     authData.signature = signature;
-    authData.timestamp = Date.now(); // 添加时间戳防重放攻击
   }
 
   return encodeURIComponent(JSON.stringify(authData));
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
         true
       ); // localstorage 模式包含 password
       const expires = new Date();
-      expires.setDate(expires.getDate() + 7); // 7天过期
+      expires.setDate(expires.getDate() + 30); // 30天过期
 
       response.cookies.set('auth', cookieValue, {
         path: '/',
@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
         false
       ); // 数据库模式不包含 password
       const expires = new Date();
-      expires.setDate(expires.getDate() + 7); // 7天过期
+      expires.setDate(expires.getDate() + 30); // 30天过期
 
       response.cookies.set('auth', cookieValue, {
         path: '/',
@@ -186,7 +186,7 @@ export async function POST(req: NextRequest) {
         false
       ); // 数据库模式不包含 password
       const expires = new Date();
-      expires.setDate(expires.getDate() + 7); // 7天过期
+      expires.setDate(expires.getDate() + 30); // 30天过期
 
       response.cookies.set('auth', cookieValue, {
         path: '/',

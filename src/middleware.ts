@@ -4,6 +4,9 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { getAuthInfoFromCookie } from '@/lib/auth';
 
+const COOKIE_MAX_AGE_DAYS = 30;
+const COOKIE_REFRESH_THRESHOLD = 0.2;
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -32,7 +35,7 @@ export async function middleware(request: NextRequest) {
     if (!authInfo.password || authInfo.password !== process.env.PASSWORD) {
       return handleAuthFailure(request, pathname);
     }
-    return NextResponse.next();
+    return refreshCookieIfNeeded(request, authInfo);
   }
 
   // 其他模式：只验证签名
@@ -51,12 +54,44 @@ export async function middleware(request: NextRequest) {
 
     // 签名验证通过即可
     if (isValidSignature) {
-      return NextResponse.next();
+      return refreshCookieIfNeeded(request, authInfo);
     }
   }
 
   // 签名验证失败或不存在签名
   return handleAuthFailure(request, pathname);
+}
+
+function refreshCookieIfNeeded(
+  request: NextRequest,
+  authInfo: ReturnType<typeof getAuthInfoFromCookie>
+): NextResponse {
+  const response = NextResponse.next();
+  if (!authInfo?.timestamp) {
+    return response;
+  }
+  const maxAgeMs = COOKIE_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+  const ageMs = Date.now() - authInfo.timestamp;
+  const remainingRatio = 1 - ageMs / maxAgeMs;
+  if (remainingRatio > COOKIE_REFRESH_THRESHOLD) {
+    return response;
+  }
+
+  const updatedAuthInfo = {
+    ...authInfo,
+    timestamp: Date.now(),
+  };
+  const cookieValue = encodeURIComponent(JSON.stringify(updatedAuthInfo));
+  const expires = new Date();
+  expires.setDate(expires.getDate() + COOKIE_MAX_AGE_DAYS);
+  response.cookies.set('auth', cookieValue, {
+    path: '/',
+    expires,
+    sameSite: 'lax',
+    httpOnly: false,
+    secure: false,
+  });
+  return response;
 }
 
 // 验证签名
