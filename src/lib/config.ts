@@ -44,6 +44,79 @@ export const API_CONFIG = {
   },
 };
 
+const BASE58_ALPHABET =
+  '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
+export function decodeBase58(base58Str: string): string {
+  for (const char of base58Str) {
+    if (!BASE58_ALPHABET.includes(char)) {
+      throw new Error(`无效的Base58字符: ${char}`);
+    }
+  }
+  let leadingZeros = 0;
+  while (leadingZeros < base58Str.length && base58Str[leadingZeros] === '1') {
+    leadingZeros++;
+  }
+  let value = BigInt(0);
+  for (const char of base58Str) {
+    const charIndex = BigInt(BASE58_ALPHABET.indexOf(char));
+    value = value * BigInt(58) + charIndex;
+  }
+  if (value === BigInt(0)) {
+    return '\x00'.repeat(leadingZeros);
+  }
+  const bytes = [];
+  while (value > BigInt(0)) {
+    bytes.push(Number(value % BigInt(256)));
+    value = value / BigInt(256);
+  }
+  bytes.reverse();
+  const leadingZeroBytes = new Array(leadingZeros).fill(0);
+  const fullBytes = [...leadingZeroBytes, ...bytes];
+  return Buffer.from(fullBytes).toString('utf8');
+}
+
+export function applySourceSyncFromBase58(
+  adminConfig: AdminConfig,
+  base58Str: string
+): void {
+  const decodedStr = decodeBase58(base58Str);
+  interface SyncData {
+    cache_time: number;
+    api_site: Record<
+      string,
+      {
+        api: string;
+        name: string;
+        detail?: string;
+      }
+    >;
+  }
+  const syncData: SyncData = JSON.parse(decodedStr);
+  const customSources = adminConfig.SourceConfig.filter(
+    (source) => source.from === 'custom'
+  );
+  const newSources: typeof adminConfig.SourceConfig = [];
+  Object.entries(syncData.api_site).forEach(([key, siteInfo]) => {
+    newSources.push({
+      key: key,
+      name: siteInfo.name,
+      api: siteInfo.api,
+      detail: siteInfo.detail || '',
+      from: 'config',
+      disabled: false,
+    });
+  });
+  const existingKeys = new Set(newSources.map((source) => source.key));
+  customSources.forEach((customSource) => {
+    if (!existingKeys.has(customSource.key)) {
+      newSources.push(customSource);
+      existingKeys.add(customSource.key);
+    }
+  });
+  adminConfig.SourceConfig = newSources;
+}
+
 // 在模块加载时根据环境决定配置来源
 let fileConfig: ConfigFileStruct;
 let cachedConfig: AdminConfig;
@@ -124,6 +197,23 @@ async function initConfig() {
         // 确保 CustomCategories 被初始化
         if (!adminConfig.CustomCategories) {
           adminConfig.CustomCategories = [];
+        }
+        if (!adminConfig.SourceSubscription) {
+          adminConfig.SourceSubscription = {
+            url: '',
+            lastSyncAt: null,
+            lastSyncSuccess: null,
+            lastSyncMessage: '',
+          };
+        } else {
+          adminConfig.SourceSubscription = {
+            url: adminConfig.SourceSubscription.url || '',
+            lastSyncAt: adminConfig.SourceSubscription.lastSyncAt ?? null,
+            lastSyncSuccess:
+              adminConfig.SourceSubscription.lastSyncSuccess ?? null,
+            lastSyncMessage:
+              adminConfig.SourceSubscription.lastSyncMessage || '',
+          };
         }
 
         // 补全 CustomCategories
@@ -227,6 +317,12 @@ async function initConfig() {
             from: 'config',
             disabled: false,
           })),
+          SourceSubscription: {
+            url: '',
+            lastSyncAt: null,
+            lastSyncSuccess: null,
+            lastSyncMessage: '',
+          },
         };
       }
 
@@ -279,6 +375,12 @@ async function initConfig() {
           from: 'config',
           disabled: false,
         })) || [],
+      SourceSubscription: {
+        url: '',
+        lastSyncAt: null,
+        lastSyncSuccess: null,
+        lastSyncMessage: '',
+      },
     } as AdminConfig;
   }
 }
@@ -299,6 +401,21 @@ export async function getConfig(): Promise<AdminConfig> {
     // 确保 CustomCategories 被初始化
     if (!adminConfig.CustomCategories) {
       adminConfig.CustomCategories = [];
+    }
+    if (!adminConfig.SourceSubscription) {
+      adminConfig.SourceSubscription = {
+        url: '',
+        lastSyncAt: null,
+        lastSyncSuccess: null,
+        lastSyncMessage: '',
+      };
+    } else {
+      adminConfig.SourceSubscription = {
+        url: adminConfig.SourceSubscription.url || '',
+        lastSyncAt: adminConfig.SourceSubscription.lastSyncAt ?? null,
+        lastSyncSuccess: adminConfig.SourceSubscription.lastSyncSuccess ?? null,
+        lastSyncMessage: adminConfig.SourceSubscription.lastSyncMessage || '',
+      };
     }
 
     // 合并一些环境变量配置

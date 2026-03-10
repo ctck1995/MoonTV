@@ -33,6 +33,12 @@ export interface AdminConfig {
     from: 'config' | 'custom';
     disabled?: boolean;
   }[];
+  SourceSubscription?: {
+    url?: string;
+    lastSyncAt?: number | null;
+    lastSyncSuccess?: boolean | null;
+    lastSyncMessage?: string;
+  };
 }
 
 export interface AdminConfigResult {

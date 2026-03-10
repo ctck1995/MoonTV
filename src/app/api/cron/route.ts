@@ -1,8 +1,9 @@
-/* eslint-disable no-console */
+/* eslint-disable no-console, @typescript-eslint/no-explicit-any */
 
 import { NextRequest, NextResponse } from 'next/server';
 
-import { db } from '@/lib/db';
+import { applySourceSyncFromBase58, getConfig } from '@/lib/config';
+import { db, getStorage } from '@/lib/db';
 import { fetchVideoDetail } from '@/lib/fetchVideoDetail';
 import { SearchResult } from '@/lib/types';
 
@@ -12,6 +13,8 @@ export async function GET(request: NextRequest) {
   console.log(request.url);
   try {
     console.log('Cron job triggered:', new Date().toISOString());
+
+    syncSourceSubscription();
 
     refreshRecordAndFavorites();
 
@@ -32,6 +35,50 @@ export async function GET(request: NextRequest) {
       },
       { status: 500 }
     );
+  }
+}
+
+async function syncSourceSubscription() {
+  const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
+  if (storageType === 'localstorage') {
+    return;
+  }
+
+  try {
+    const adminConfig = await getConfig();
+    const subscription = adminConfig.SourceSubscription;
+    const url = subscription?.url?.trim() || '';
+    if (!url) {
+      return;
+    }
+
+    let syncSuccess = false;
+    let syncError = '';
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) {
+        throw new Error(`订阅源拉取失败: ${resp.status}`);
+      }
+      const text = (await resp.text()).trim();
+      applySourceSyncFromBase58(adminConfig, text);
+      syncSuccess = true;
+    } catch (err) {
+      syncError = err instanceof Error ? err.message : '订阅源同步失败';
+    }
+
+    adminConfig.SourceSubscription = {
+      url,
+      lastSyncAt: Date.now(),
+      lastSyncSuccess: syncSuccess,
+      lastSyncMessage: syncError,
+    };
+
+    const storage = getStorage();
+    if (storage && typeof (storage as any).setAdminConfig === 'function') {
+      await (storage as any).setAdminConfig(adminConfig);
+    }
+  } catch (err) {
+    console.error('订阅源自动同步失败:', err);
   }
 }
 

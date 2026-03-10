@@ -3,47 +3,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getAuthInfoFromCookie } from '@/lib/auth';
-import { getConfig } from '@/lib/config';
+import { applySourceSyncFromBase58, getConfig } from '@/lib/config';
 import { getStorage } from '@/lib/db';
 import { IStorage } from '@/lib/types';
 
 export const runtime = 'edge';
 
 // 支持的操作类型
-type Action = 'add' | 'disable' | 'enable' | 'delete' | 'sort' | 'sync';
+type Action =
+  | 'add'
+  | 'disable'
+  | 'enable'
+  | 'delete'
+  | 'sort'
+  | 'sync'
+  | 'setSubscription';
 
 interface BaseBody {
   action?: Action;
-}
-
-function decodeBase58(base58Str: string): string {
-    const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-    for (const char of base58Str) {
-        if (!BASE58_ALPHABET.includes(char)) {
-            throw new Error(`无效的Base58字符: ${char}`);
-        }
-    }
-    let leadingZeros = 0;
-    while (leadingZeros < base58Str.length && base58Str[leadingZeros] === '1') {
-        leadingZeros++;
-    }
-    let value = BigInt(0);
-    for (const char of base58Str) {
-        const charIndex = BigInt(BASE58_ALPHABET.indexOf(char));
-        value = value * BigInt(58) + charIndex;
-    }
-    if (value === BigInt(0)) {
-        return '\x00'.repeat(leadingZeros);
-    }
-    const bytes = [];
-    while (value > BigInt(0)) {
-        bytes.push(Number(value % BigInt(256)));
-        value = value / BigInt(256);
-    }
-    bytes.reverse();
-    const leadingZeroBytes = new Array(leadingZeros).fill(0);
-    const fullBytes = [...leadingZeroBytes, ...bytes];
-    return Buffer.from(fullBytes).toString('utf8');
 }
 
 export async function POST(request: NextRequest) {
@@ -68,7 +45,15 @@ export async function POST(request: NextRequest) {
     const username = authInfo.username;
 
     // 基础校验
-    const ACTIONS: Action[] = ['add', 'disable', 'enable', 'delete', 'sort', 'sync'];
+    const ACTIONS: Action[] = [
+      'add',
+      'disable',
+      'enable',
+      'delete',
+      'sort',
+      'sync',
+      'setSubscription',
+    ];
     if (!username || !action || !ACTIONS.includes(action)) {
       return NextResponse.json({ error: '参数格式错误' }, { status: 400 });
     }
@@ -173,43 +158,50 @@ export async function POST(request: NextRequest) {
         const { str } = body as { str?: string };
         if (!str)
           return NextResponse.json({ error: '缺少 str 参数' }, { status: 400 });
-        const decodedStr = decodeBase58(str);
-        interface SyncData {
-          cache_time: number;
-          api_site: Record<
-            string,
-            {
-              api: string;
-              name: string;
-              detail?: string;
-            }
-          >;
-        }
-        const syncData: SyncData = JSON.parse(decodedStr);
-        const customSources = adminConfig.SourceConfig.filter(
-          (source) => source.from === 'custom'
-        );
-        adminConfig.SourceConfig = [];
-        Object.entries(syncData.api_site).forEach(([key, siteInfo]) => {
-          adminConfig.SourceConfig.push({
-            key: key,
-            name: siteInfo.name,
-            api: siteInfo.api,
-            detail: siteInfo.detail || '',
-            from: 'config',
-            disabled: false,
-          });
-        });
-        const existingKeys = new Set(
-          adminConfig.SourceConfig.map((source) => source.key)
-        );
-        customSources.forEach((customSource) => {
-          if (!existingKeys.has(customSource.key)) {
-            adminConfig.SourceConfig.push(customSource);
-            existingKeys.add(customSource.key);
-          }
-        });
+        applySourceSyncFromBase58(adminConfig, str);
         break;
+      }
+      case 'setSubscription': {
+        const { url } = body as { url?: string };
+        if (typeof url !== 'string') {
+          return NextResponse.json({ error: '缺少 url 参数' }, { status: 400 });
+        }
+        const trimmedUrl = url.trim();
+        let syncSuccess: boolean | null = null;
+        let syncError = '';
+        if (trimmedUrl) {
+          try {
+            const resp = await fetch(trimmedUrl);
+            if (!resp.ok) {
+              throw new Error(`订阅源拉取失败: ${resp.status}`);
+            }
+            const text = (await resp.text()).trim();
+            applySourceSyncFromBase58(adminConfig, text);
+            syncSuccess = true;
+          } catch (err) {
+            syncSuccess = false;
+            syncError = err instanceof Error ? err.message : '订阅源同步失败';
+          }
+        }
+        adminConfig.SourceSubscription = {
+          url: trimmedUrl,
+          lastSyncAt: trimmedUrl ? Date.now() : null,
+          lastSyncSuccess: trimmedUrl ? syncSuccess : null,
+          lastSyncMessage: trimmedUrl ? syncError : '',
+        };
+
+        if (storage && typeof (storage as any).setAdminConfig === 'function') {
+          await (storage as any).setAdminConfig(adminConfig);
+        }
+
+        return NextResponse.json(
+          { ok: true, syncSuccess, syncError },
+          {
+            headers: {
+              'Cache-Control': 'no-store',
+            },
+          }
+        );
       }
       default:
         return NextResponse.json({ error: '未知操作' }, { status: 400 });

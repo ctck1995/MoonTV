@@ -643,6 +643,8 @@ const VideoSourceConfig = ({
     from: 'config',
   });
   const [syncStr, setSyncStr] = useState('');
+  const [subscriptionUrl, setSubscriptionUrl] = useState('');
+  const [savingSubscription, setSavingSubscription] = useState(false);
 
   // dnd-kit 传感器
   const sensors = useSensors(
@@ -665,6 +667,9 @@ const VideoSourceConfig = ({
       setSources(config.SourceConfig);
       // 进入时重置 orderChanged
       setOrderChanged(false);
+    }
+    if (typeof config?.SourceSubscription?.url === 'string') {
+      setSubscriptionUrl(config.SourceSubscription.url);
     }
   }, [config]);
 
@@ -698,14 +703,52 @@ const VideoSourceConfig = ({
     try {
       callSourceApi({
         action: 'sync',
-        str: syncStr.trim()
+        str: syncStr.trim(),
       });
       showSuccess('视频源同步成功');
       // 成功后清空输入框
-      setSyncStr(''); 
+      setSyncStr('');
     } catch (err) {
       console.error('视频源同步失败', err);
     }
+  };
+
+  const handleSaveSubscription = async () => {
+    const url = subscriptionUrl.trim();
+    setSavingSubscription(true);
+    try {
+      const resp = await fetch('/api/admin/source', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'setSubscription', url }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        throw new Error(data.error || `操作失败: ${resp.status}`);
+      }
+      await refreshConfig();
+      if (!url) {
+        showSuccess('订阅源已清空');
+      } else if (data.syncSuccess) {
+        showSuccess('订阅源保存并同步成功');
+      } else {
+        showError(data.syncError || '订阅源同步失败');
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : '操作失败');
+    } finally {
+      setSavingSubscription(false);
+    }
+  };
+
+  const formatSyncTime = (value?: number | null) => {
+    if (!value) return '暂无';
+    return new Date(value).toLocaleString();
+  };
+
+  const getSyncStatusText = (value?: boolean | null) => {
+    if (value === null || value === undefined) return '未知';
+    return value ? '成功' : '失败';
   };
 
   const handleToggleEnable = (key: string) => {
@@ -855,7 +898,6 @@ const VideoSourceConfig = ({
 
   return (
     <div className='space-y-6'>
-
       <div className='space-y-2'>
         <div className='flex items-center justify-between'>
           <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
@@ -875,6 +917,36 @@ const VideoSourceConfig = ({
           rows={5}
           className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm'
         />
+      </div>
+
+      <div className='space-y-2'>
+        <div className='flex items-center justify-between'>
+          <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+            视频源订阅
+          </h4>
+          <button
+            onClick={handleSaveSubscription}
+            disabled={savingSubscription}
+            className='px-3 py-1 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-sm rounded-lg transition-colors'
+          >
+            保存
+          </button>
+        </div>
+        <input
+          value={subscriptionUrl}
+          onChange={(e) => setSubscriptionUrl(e.target.value)}
+          placeholder='请输入订阅地址...'
+          className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm'
+        />
+        <div className='text-xs text-gray-500 dark:text-gray-400'>
+          {!config.SourceSubscription?.url
+            ? '未配置订阅源'
+            : `最近同步：${formatSyncTime(
+                config.SourceSubscription?.lastSyncAt
+              )}，状态：${getSyncStatusText(
+                config.SourceSubscription?.lastSyncSuccess
+              )}`}
+        </div>
       </div>
 
       {/* 添加视频源表单 */}
