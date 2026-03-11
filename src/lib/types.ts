@@ -61,6 +61,10 @@ export interface IStorage {
   // 用户列表
   getAllUsers(): Promise<string[]>;
 
+  // 用户活跃度
+  setLastActive(userName: string): Promise<void>;
+  getLastActive(userName: string): Promise<number | null>;
+
   // 管理员配置相关
   getAdminConfig(): Promise<AdminConfig | null>;
   setAdminConfig(config: AdminConfig): Promise<void>;

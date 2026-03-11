@@ -28,6 +28,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 记录用户活跃时间
+    await db.setLastActive(authInfo.username);
+
     const records = await db.getAllPlayRecords(authInfo.username);
     return NextResponse.json(records, { status: 200 });
   } catch (err) {

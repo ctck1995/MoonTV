@@ -163,6 +163,26 @@ export class DbManager {
     return [];
   }
 
+  // ---------- 用户活跃度 ----------
+  async setLastActive(userName: string): Promise<void> {
+    if (
+      this.storage &&
+      typeof (this.storage as any).setLastActive === 'function'
+    ) {
+      await (this.storage as any).setLastActive(userName);
+    }
+  }
+
+  async getLastActive(userName: string): Promise<number | null> {
+    if (
+      this.storage &&
+      typeof (this.storage as any).getLastActive === 'function'
+    ) {
+      return (this.storage as any).getLastActive(userName);
+    }
+    return null;
+  }
+
   // ---------- 管理员配置 ----------
   async getAdminConfig(): Promise<AdminConfig | null> {
     if (typeof (this.storage as any).getAdminConfig === 'function') {

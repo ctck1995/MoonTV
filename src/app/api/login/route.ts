@@ -176,6 +176,8 @@ export async function POST(req: NextRequest) {
           { status: 401 }
         );
       }
+      // 记录用户活跃时间
+      await db.setLastActive(username);
 
       // 验证成功，设置认证cookie
       const response = NextResponse.json({ ok: true });

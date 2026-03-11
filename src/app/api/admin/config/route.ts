@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AdminConfigResult } from '@/lib/admin.types';
 import { getAuthInfoFromCookie } from '@/lib/auth';
 import { getConfig } from '@/lib/config';
+import { db } from '@/lib/db';
 
 export const runtime = 'edge';
 
@@ -27,6 +28,26 @@ export async function GET(request: NextRequest) {
 
   try {
     const config = await getConfig();
+
+    // 填充最后活跃时间
+    if (config.UserConfig?.Users) {
+      const enrichedUsers = await Promise.all(
+        config.UserConfig.Users.map(async (user) => {
+          const nextUser = { ...user };
+          try {
+            const lastActive = await db.getLastActive(user.username);
+            if (typeof lastActive === 'number' && Number.isFinite(lastActive)) {
+              nextUser.lastActive = lastActive;
+            }
+          } catch (error) {
+            console.error(`获取用户 ${user.username} 活跃时间失败:`, error);
+          }
+          return nextUser;
+        })
+      );
+      config.UserConfig = { ...config.UserConfig, Users: enrichedUsers };
+    }
+
     const result: AdminConfigResult = {
       Role: 'owner',
       Config: config,
