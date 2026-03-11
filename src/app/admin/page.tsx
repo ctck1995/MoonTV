@@ -558,6 +558,7 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                             ? new Date(user.lastActive).toLocaleString(
                                 'zh-CN',
                                 {
+                                  year: 'numeric',
                                   month: 'numeric',
                                   day: 'numeric',
                                   hour: 'numeric',
