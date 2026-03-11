@@ -13,7 +13,8 @@
   "crons": [
     {
       "path": "/api/cron",
-      "schedule": "0 1 * * *"
+      "schedule": "0 1 * * *",
+      "_comment": "DO NOT CHANGE: Code logic in route.ts depends on execution at 1 AM for source syncing."
     }
   ]
 }

@@ -14,7 +14,14 @@ export async function GET(request: NextRequest) {
   try {
     console.log('Cron job triggered:', new Date().toISOString());
 
-    syncSourceSubscription();
+    const currentHour = new Date().getHours();
+    // 仅在凌晨 1 点执行源订阅同步 (配合 vercel.json 的 0 1 * * *)
+    if (currentHour === 1) {
+      console.log('当前时间为凌晨1点，开始执行源订阅同步...');
+      syncSourceSubscription();
+    } else {
+      console.log(`当前时间 ${currentHour}点，跳过源订阅同步`);
+    }
 
     refreshRecordAndFavorites();
 
