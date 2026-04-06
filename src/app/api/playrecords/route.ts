@@ -30,6 +30,11 @@ export async function GET(request: NextRequest) {
 
     // 记录用户活跃时间
     await db.setLastActive(authInfo.username);
+    // 记录用户活跃IP
+    const clientIp = request.headers.get('X-Real-IP');
+    if (clientIp) {
+      await db.setLastActiveIp(authInfo.username, clientIp);
+    }
 
     const records = await db.getAllPlayRecords(authInfo.username);
     return NextResponse.json(records, { status: 200 });

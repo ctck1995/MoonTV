@@ -17,6 +17,7 @@ export interface AdminConfig {
       role: 'user' | 'admin' | 'owner';
       banned?: boolean;
       lastActive?: number;
+      lastActiveIp?: string;
     }[];
   };
   SourceConfig: {

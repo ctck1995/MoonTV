@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   try {
     const config = await getConfig();
 
-    // 填充最后活跃时间
+    // 填充最后活跃时间和IP
     if (config.UserConfig?.Users) {
       const enrichedUsers = await Promise.all(
         config.UserConfig.Users.map(async (user) => {
@@ -41,6 +41,14 @@ export async function GET(request: NextRequest) {
             }
           } catch (error) {
             console.error(`获取用户 ${user.username} 活跃时间失败:`, error);
+          }
+          try {
+            const lastActiveIp = await db.getLastActiveIp(user.username);
+            if (lastActiveIp) {
+              nextUser.lastActiveIp = lastActiveIp;
+            }
+          } catch (error) {
+            console.error(`获取用户 ${user.username} 活跃IP失败:`, error);
           }
           return nextUser;
         })

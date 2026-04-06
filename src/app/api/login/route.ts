@@ -178,6 +178,11 @@ export async function POST(req: NextRequest) {
       }
       // 记录用户活跃时间
       await db.setLastActive(username);
+      // 记录用户活跃IP
+      const clientIp = req.headers.get('X-Real-IP');
+      if (clientIp) {
+        await db.setLastActiveIp(username, clientIp);
+      }
 
       // 验证成功，设置认证cookie
       const response = NextResponse.json({ ok: true });

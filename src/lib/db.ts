@@ -183,6 +183,25 @@ export class DbManager {
     return null;
   }
 
+  async setLastActiveIp(userName: string, ip: string): Promise<void> {
+    if (
+      this.storage &&
+      typeof (this.storage as any).setLastActiveIp === 'function'
+    ) {
+      await (this.storage as any).setLastActiveIp(userName, ip);
+    }
+  }
+
+  async getLastActiveIp(userName: string): Promise<string | null> {
+    if (
+      this.storage &&
+      typeof (this.storage as any).getLastActiveIp === 'function'
+    ) {
+      return (this.storage as any).getLastActiveIp(userName);
+    }
+    return null;
+  }
+
   // ---------- 管理员配置 ----------
   async getAdminConfig(): Promise<AdminConfig | null> {
     if (typeof (this.storage as any).getAdminConfig === 'function') {

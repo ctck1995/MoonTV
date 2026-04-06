@@ -64,6 +64,8 @@ export interface IStorage {
   // 用户活跃度
   setLastActive(userName: string): Promise<void>;
   getLastActive(userName: string): Promise<number | null>;
+  setLastActiveIp(userName: string, ip: string): Promise<void>;
+  getLastActiveIp(userName: string): Promise<string | null>;
 
   // 管理员配置相关
   getAdminConfig(): Promise<AdminConfig | null>;

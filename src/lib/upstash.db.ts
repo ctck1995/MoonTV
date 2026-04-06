@@ -195,6 +195,9 @@ export class UpstashRedisStorage implements IStorage {
     // 删除活跃时间
     await withRetry(() => this.client.del(this.lastActiveKey(userName)));
 
+    // 删除活跃IP
+    await withRetry(() => this.client.del(this.lastActiveIpKey(userName)));
+
     // 删除播放记录
     const playRecordPattern = `u:${userName}:pr:*`;
     const playRecordKeys = await withRetry(() =>
@@ -273,6 +276,22 @@ export class UpstashRedisStorage implements IStorage {
     if (val === null || val === undefined) return null;
     const n = Number(val);
     return Number.isFinite(n) ? n : null;
+  }
+
+  private lastActiveIpKey(user: string) {
+    return `u:${user}:last_active_ip`;
+  }
+
+  async setLastActiveIp(userName: string, ip: string): Promise<void> {
+    await withRetry(() => this.client.set(this.lastActiveIpKey(userName), ip));
+  }
+
+  async getLastActiveIp(userName: string): Promise<string | null> {
+    const val = await withRetry(() =>
+      this.client.get(this.lastActiveIpKey(userName))
+    );
+    if (val === null || val === undefined) return null;
+    return String(val);
   }
 
   // ---------- 获取全部用户 ----------
