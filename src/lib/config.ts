@@ -387,11 +387,13 @@ async function initConfig() {
 
 export async function getConfig(): Promise<AdminConfig> {
   const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
-  if (process.env.DOCKER_ENV === 'true' || storageType === 'localstorage') {
+  // 仅 localstorage 模式使用文件/编译期配置。
+  // Redis/DB 模式应以存储为准（仅在存储为空时走 initConfig 初始化）。
+  if (storageType === 'localstorage') {
     await initConfig();
     return cachedConfig;
   }
-  // 非 docker 环境且 DB 存储，直接读 db 配置
+  // Redis/DB 存储，直接读 db 配置
   const storage = getStorage();
   let adminConfig: AdminConfig | null = null;
   if (storage && typeof (storage as any).getAdminConfig === 'function') {
@@ -436,55 +438,6 @@ export async function getConfig(): Promise<AdminConfig> {
       process.env.NEXT_PUBLIC_DOUBAN_IMAGE_PROXY || '';
     adminConfig.SiteConfig.DisableYellowFilter =
       process.env.NEXT_PUBLIC_DISABLE_YELLOW_FILTER === 'true';
-
-    // 合并文件中的源信息
-    fileConfig = runtimeConfig as unknown as ConfigFileStruct;
-    const apiSiteEntries = Object.entries(fileConfig.api_site);
-    const sourceConfigMap = new Map(
-      (adminConfig.SourceConfig || []).map((s) => [s.key, s])
-    );
-
-    apiSiteEntries.forEach(([key, site]) => {
-      const existingSource = sourceConfigMap.get(key);
-      if (existingSource) {
-        // 如果已存在，只覆盖 name、api、detail 和 from
-        existingSource.name = site.name;
-        existingSource.api = site.api;
-        existingSource.detail = site.detail;
-        existingSource.from = 'config';
-      } else {
-        // 如果不存在，创建新条目
-        sourceConfigMap.set(key, {
-          key,
-          name: site.name,
-          api: site.api,
-          detail: site.detail,
-          from: 'config',
-          disabled: false,
-        });
-      }
-    });
-
-    // 检查现有源是否在 fileConfig.api_site 中，如果不在则标记为 custom
-    const apiSiteKeys = new Set(apiSiteEntries.map(([key]) => key));
-    sourceConfigMap.forEach((source) => {
-      if (!apiSiteKeys.has(source.key)) {
-        source.from = 'custom';
-      }
-    });
-
-    // 将 Map 转换回数组
-    adminConfig.SourceConfig = Array.from(sourceConfigMap.values());
-
-    // 覆盖 CustomCategories
-    const customCategories = fileConfig.custom_category || [];
-    adminConfig.CustomCategories = customCategories.map((category) => ({
-      name: category.name,
-      type: category.type,
-      query: category.query,
-      from: 'config',
-      disabled: false,
-    }));
 
     const ownerUser = process.env.USERNAME || '';
     // 检查配置中的站长用户是否和 USERNAME 匹配，如果不匹配则降级为普通用户

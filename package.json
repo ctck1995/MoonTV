@@ -81,11 +81,7 @@
   },
   "lint-staged": {
     "**/*.{js,jsx,ts,tsx}": [
-      "eslint --max-warnings=0",
-      "prettier -w"
-    ],
-    "**/*.{json,css,scss,md,webmanifest}": [
-      "prettier -w"
+      "eslint --max-warnings=0"
     ]
   },
   "packageManager": "pnpm@10.14.0"
