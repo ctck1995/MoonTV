@@ -420,45 +420,6 @@ export async function getConfig(): Promise<AdminConfig> {
       };
     }
 
-    // 合并一些环境变量配置
-    adminConfig.SiteConfig.SiteName =
-      process.env.NEXT_PUBLIC_SITE_NAME || 'MoonTV';
-    adminConfig.SiteConfig.Announcement =
-      process.env.ANNOUNCEMENT ||
-      '本网站仅提供影视信息搜索服务，所有内容均来自第三方网站。本站不存储任何视频资源，不对任何内容的准确性、合法性、完整性负责。';
-    adminConfig.UserConfig.AllowRegister =
-      process.env.NEXT_PUBLIC_ENABLE_REGISTER === 'true';
-    adminConfig.SiteConfig.DoubanProxyType =
-      process.env.NEXT_PUBLIC_DOUBAN_PROXY_TYPE || 'direct';
-    adminConfig.SiteConfig.DoubanProxy =
-      process.env.NEXT_PUBLIC_DOUBAN_PROXY || '';
-    adminConfig.SiteConfig.DoubanImageProxyType =
-      process.env.NEXT_PUBLIC_DOUBAN_IMAGE_PROXY_TYPE || 'direct';
-    adminConfig.SiteConfig.DoubanImageProxy =
-      process.env.NEXT_PUBLIC_DOUBAN_IMAGE_PROXY || '';
-    adminConfig.SiteConfig.DisableYellowFilter =
-      process.env.NEXT_PUBLIC_DISABLE_YELLOW_FILTER === 'true';
-
-    const ownerUser = process.env.USERNAME || '';
-    // 检查配置中的站长用户是否和 USERNAME 匹配，如果不匹配则降级为普通用户
-    let containOwner = false;
-    adminConfig.UserConfig.Users.forEach((user) => {
-      if (user.username !== ownerUser && user.role === 'owner') {
-        user.role = 'user';
-      }
-      if (user.username === ownerUser) {
-        containOwner = true;
-        user.role = 'owner';
-      }
-    });
-
-    // 如果不在则添加
-    if (!containOwner) {
-      adminConfig.UserConfig.Users.unshift({
-        username: ownerUser,
-        role: 'owner',
-      });
-    }
     cachedConfig = adminConfig;
   } else {
     // DB 无配置，执行一次初始化
@@ -541,12 +502,12 @@ export async function resetConfig() {
     CustomCategories:
       storageType === 'redis'
         ? customCategories?.map((category) => ({
-            name: category.name,
-            type: category.type,
-            query: category.query,
-            from: 'config',
-            disabled: false,
-          })) || []
+          name: category.name,
+          type: category.type,
+          query: category.query,
+          from: 'config',
+          disabled: false,
+        })) || []
         : [],
   } as AdminConfig;
 
