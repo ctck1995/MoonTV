@@ -596,7 +596,20 @@ function PlayPageClient() {
       console.log(`[去广告] 过滤完成: 移除 ${adSegmentCount} 个广告分段, 保留 ${filteredSegments}/${originalSegments} 个分段`);
     }
 
-    return filteredLines.join('\n');
+    // 后处理：清理连续的 DISCONTINUITY 标记，减少播放器解码器重初始化次数
+    let result = filteredLines.join('\n');
+    // 将连续的多个 DISCONTINUITY 标记替换为单个
+    const beforeCleanup = result;
+    result = result.replace(/(#EXT-X-DISCONTINUITY[\s]*\n?){2,}/g, '#EXT-X-DISCONTINUITY\n');
+    
+    // 统计清理了多少个多余的标记
+    const beforeCount = (beforeCleanup.match(/#EXT-X-DISCONTINUITY/g) || []).length;
+    const afterCount = (result.match(/#EXT-X-DISCONTINUITY/g) || []).length;
+    if (beforeCount > afterCount) {
+      console.log(`[去广告] 清理了 ${beforeCount - afterCount} 个多余的 DISCONTINUITY 标记`);
+    }
+
+    return result;
   }
 
   // 跳过片头片尾配置相关函数
@@ -1714,7 +1727,7 @@ function PlayPageClient() {
 
       artPlayerRef.current.on('video:timeupdate', () => {
         const now = Date.now();
-        let interval = 5000;
+        let interval = 10000;
         if (process.env.NEXT_PUBLIC_STORAGE_TYPE === 'upstash') {
           interval = 20000;
         }
