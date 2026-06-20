@@ -499,17 +499,101 @@ function PlayPageClient() {
   function filterAdsFromM3U8(m3u8Content: string): string {
     if (!m3u8Content) return '';
 
-    // 按行分割M3U8内容
     const lines = m3u8Content.split('\n');
-    const filteredLines = [];
+    const filteredLines: string[] = [];
+
+    // 广告URL特征（不区分大小写）
+    // 短模式使用路径段匹配，长模式使用包含匹配
+    const adPathPatterns = ['ad', 'ads', 'adv', 'promo']; // 需要作为独立路径段匹配
+    const adDomainPatterns = [
+      'advert', 'advertisement', 'commercial',
+      'ads.', 'ad.', 'adv.',
+      'preroll', 'postroll', 'midroll',
+      'freewheel', 'doubleclick', 'googlesyndication',
+      '2mdn', 'imrworldwide', 'scorecardresearch',
+    ];
+
+    // 检测URL是否为广告
+    function isAdUrl(url: string): boolean {
+      const lowerUrl = url.toLowerCase();
+
+      // 短模式：要求是独立的路径段（如 /ad/ 或 /ads/），避免子串误匹配
+      for (const pattern of adPathPatterns) {
+        if (new RegExp(`/(?:${pattern})/`, 'i').test(url) ||
+            new RegExp(`/(?:${pattern})\\b`, 'i').test(url)) {
+          return true;
+        }
+      }
+
+      // 长模式：包含匹配即可（这些足够明确，误匹配风险低）
+      return adDomainPatterns.some(p => lowerUrl.includes(p));
+    }
+
+    // 段级别过滤：只丢弃被判定为广告的单个分段（URL行 + 其前面的 #EXTINF 行）
+    // 保留所有 #EXT-X-DISCONTINUITY、#EXT-X-ENDLIST 和其他元数据
+    let adSegmentCount = 0;
+    let pendingExtInf: string | null = null; // 暂存当前分段前面的 #EXTINF 行
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+      const trimmedLine = line.trim();
 
-      // 只过滤#EXT-X-DISCONTINUITY标识
-      if (!line.includes('#EXT-X-DISCONTINUITY')) {
+      // 检测URL行（分段地址）
+      if (trimmedLine.startsWith('http') || (trimmedLine.startsWith('/') && !trimmedLine.startsWith('#'))) {
+        if (isAdUrl(trimmedLine)) {
+          // 这是广告分段：丢弃该URL行以及暂存的 #EXTINF 行
+          adSegmentCount++;
+          console.log('[去广告] 过滤广告分段:', trimmedLine.substring(0, 100));
+          pendingExtInf = null; // 丢弃暂存的 #EXTINF
+          continue;
+        }
+        // 正常视频分段：先输出暂存的 #EXTINF（如果有），再输出URL行
+        if (pendingExtInf !== null) {
+          filteredLines.push(pendingExtInf);
+          pendingExtInf = null;
+        }
         filteredLines.push(line);
+        continue;
       }
+
+      // #EXTINF 行：暂存，等确认后续URL是否为广告后再决定保留或丢弃
+      if (trimmedLine.startsWith('#EXTINF')) {
+        pendingExtInf = line;
+        continue;
+      }
+
+      // 其他所有行（包括 #EXT-X-DISCONTINUITY、#EXT-X-ENDLIST、#EXTM3U 等）直接保留
+      // 如果有暂存的 #EXTINF（说明上一个分段已处理完毕），先输出
+      if (pendingExtInf !== null) {
+        filteredLines.push(pendingExtInf);
+        pendingExtInf = null;
+      }
+      filteredLines.push(line);
+    }
+
+    // 处理末尾可能残留的暂存 #EXTINF（理论上不应出现，但做防御处理）
+    if (pendingExtInf !== null) {
+      filteredLines.push(pendingExtInf);
+    }
+
+    // 统计过滤结果
+    const originalSegments = lines.filter(l => l.trim().startsWith('http') || (l.trim().startsWith('/') && !l.trim().startsWith('#'))).length;
+    const filteredSegments = filteredLines.filter(l => l.trim().startsWith('http') || (l.trim().startsWith('/') && !l.trim().startsWith('#'))).length;
+
+    // Fallback 1: 确保过滤后至少有一个有效的视频分段
+    if (filteredSegments === 0) {
+      console.warn('[去广告] 过滤后没有有效的视频分段，使用原始内容');
+      return m3u8Content;
+    }
+
+    // Fallback 2: 如果过滤掉超过50%的分段，可能误杀过多，回退到原始内容
+    if (filteredSegments < originalSegments * 0.5) {
+      console.warn(`[去广告] 过滤比例过高 (${originalSegments} -> ${filteredSegments})，可能误杀，使用原始内容`);
+      return m3u8Content;
+    }
+
+    if (adSegmentCount > 0) {
+      console.log(`[去广告] 过滤完成: 移除 ${adSegmentCount} 个广告分段, 保留 ${filteredSegments}/${originalSegments} 个分段`);
     }
 
     return filteredLines.join('\n');
