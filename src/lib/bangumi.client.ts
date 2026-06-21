@@ -22,8 +22,18 @@ export interface BangumiCalendarData {
   }[];
 }
 
-export async function GetBangumiCalendarData(): Promise<BangumiCalendarData[]> {
-  const response = await fetch('https://api.bgm.tv/calendar');
-  const data = await response.json();
-  return data;
+export async function GetBangumiCalendarData(timeout?: number): Promise<BangumiCalendarData[]> {
+  const controller = new AbortController();
+  const timeoutId = timeout ? setTimeout(() => controller.abort(), timeout) : null;
+
+  try {
+    const response = await fetch('https://api.bgm.tv/calendar', {
+      signal: controller.signal,
+    });
+    const data = await response.json();
+    return data;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }
+
