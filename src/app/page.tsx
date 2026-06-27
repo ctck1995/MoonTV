@@ -81,7 +81,7 @@ function HomeClient() {
             }),
             getDoubanCategories({ kind: 'tv', category: 'tv', type: 'tv' }),
             getDoubanCategories({ kind: 'tv', category: 'show', type: 'show' }),
-            GetBangumiCalendarData(800).catch(() => []), // 失败时返回空数组，不影响其他数据
+            GetBangumiCalendarData(1000).catch(() => []), // 失败时返回空数组，不影响其他数据
           ]);
 
         if (moviesData.code === 200) {
