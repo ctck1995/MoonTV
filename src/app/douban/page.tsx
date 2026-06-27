@@ -286,7 +286,7 @@ function DoubanPageClient() {
           throw new Error('没有找到对应的分类');
         }
       } else if (type === 'anime' && primarySelection === '每日放送') {
-        const calendarData = await GetBangumiCalendarData();
+        const calendarData = await GetBangumiCalendarData(5000);
         const weekdayData = calendarData.find(
           (item) => item.weekday.en === selectedWeekday
         );

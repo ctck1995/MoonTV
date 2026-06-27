@@ -1,5 +1,3 @@
-'use client';
-
 export interface BangumiCalendarData {
   weekday: {
     en: string;
@@ -27,13 +25,17 @@ export async function GetBangumiCalendarData(timeout?: number): Promise<BangumiC
   const timeoutId = timeout ? setTimeout(() => controller.abort(), timeout) : null;
 
   try {
-    const response = await fetch('https://api.bgm.tv/calendar', {
+    const response = await fetch('/api/bangumi/calendar', {
       signal: controller.signal,
     });
+
+    if (!response.ok) {
+      throw new Error('Bangumi-API请求失败');
+    }
+
     const data = await response.json();
     return data;
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
   }
 }
-
