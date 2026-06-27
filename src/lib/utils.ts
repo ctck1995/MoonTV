@@ -12,12 +12,13 @@ function getDoubanImageProxyConfig(): {
     | 'custom';
   proxyUrl: string;
 } {
+  // 服务端配置优先，不再读取 localStorage
   const doubanImageProxyType =
-    localStorage.getItem('doubanImageProxyType') ||
+    // localStorage.getItem('doubanImageProxyType') ||
     (window as any).RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY_TYPE ||
     'direct';
   const doubanImageProxy =
-    localStorage.getItem('doubanImageProxyUrl') ||
+    // localStorage.getItem('doubanImageProxyUrl') ||
     (window as any).RUNTIME_CONFIG?.DOUBAN_IMAGE_PROXY ||
     '';
   return {

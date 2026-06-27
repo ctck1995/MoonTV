@@ -102,12 +102,13 @@ function getDoubanProxyConfig(): {
     | 'custom';
   proxyUrl: string;
 } {
+  // 服务端配置优先，不再读取 localStorage
   const doubanProxyType =
-    localStorage.getItem('doubanDataSource') ||
+    // localStorage.getItem('doubanDataSource') ||
     (window as any).RUNTIME_CONFIG?.DOUBAN_PROXY_TYPE ||
     'direct';
   const doubanProxy =
-    localStorage.getItem('doubanProxyUrl') ||
+    // localStorage.getItem('doubanProxyUrl') ||
     (window as any).RUNTIME_CONFIG?.DOUBAN_PROXY ||
     '';
   return {
